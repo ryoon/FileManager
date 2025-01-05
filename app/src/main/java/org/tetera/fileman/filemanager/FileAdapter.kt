@@ -1,4 +1,4 @@
-package io.github.ivruix.filemanager
+package org.tetera.fileman.filemanager
 
 import android.content.Context
 import android.graphics.BitmapFactory

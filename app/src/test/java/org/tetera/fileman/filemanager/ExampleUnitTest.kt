@@ -1,4 +1,4 @@
-package io.github.ivruix.filemanager
+package org.tetera.fileman.filemanager
 
 import org.junit.Test
 

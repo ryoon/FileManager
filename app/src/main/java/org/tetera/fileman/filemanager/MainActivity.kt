@@ -1,4 +1,4 @@
-package io.github.ivruix.filemanager
+package org.tetera.fileman.filemanager
 
 import android.Manifest
 import android.content.Intent

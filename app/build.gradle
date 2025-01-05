@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'io.github.ivruix.filemanager'
+    namespace 'org.tetera.fileman.filemanager'
     compileSdk 33
 
     defaultConfig {
-        applicationId "io.github.ivruix.filemanager"
+        applicationId "org.tetera.fileman.filemanager"
         minSdk 26
         targetSdk 33
         versionCode 1
