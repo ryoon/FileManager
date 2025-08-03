@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
@@ -12,6 +13,7 @@ import android.view.MenuItem
 import android.view.View
 import android.webkit.MimeTypeMap
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -31,9 +33,28 @@ class MainActivity : AppCompatActivity(), FileAdapter.OnItemClickListener,
         private const val REQUEST_CODE_PERMISSIONS = 123
     }
 
-    private val requiredPermissions = arrayOf(
-        Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
+    private val requiredPermissionsOld = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
     )
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private val requiredPermissions33 = arrayOf(
+        Manifest.permission.READ_MEDIA_AUDIO,
+        Manifest.permission.READ_MEDIA_VIDEO,
+        Manifest.permission.READ_MEDIA_IMAGES,
+    )
+
+    private fun requiredPermissions(): Array<out String> {
+        var ret : Array<out String>
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ret = requiredPermissions33
+        } else {
+            ret = requiredPermissionsOld
+        }
+
+        return ret
+    }
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: FileAdapter
@@ -52,7 +73,7 @@ class MainActivity : AppCompatActivity(), FileAdapter.OnItemClickListener,
 
         // Check for permissions
         if (!allPermissionsGranted()) {
-            ActivityCompat.requestPermissions(this, requiredPermissions, REQUEST_CODE_PERMISSIONS)
+            ActivityCompat.requestPermissions(this, requiredPermissions(), REQUEST_CODE_PERMISSIONS)
         } else {
             initRecyclerView()
         }
@@ -84,7 +105,7 @@ class MainActivity : AppCompatActivity(), FileAdapter.OnItemClickListener,
 
     // Checks whether all necessary permissions are granted
     private fun allPermissionsGranted(): Boolean {
-        for (permission in requiredPermissions) {
+        for (permission in requiredPermissions()) {
             if (ContextCompat.checkSelfPermission(
                     this, permission
                 ) != PackageManager.PERMISSION_GRANTED
@@ -147,7 +168,9 @@ class MainActivity : AppCompatActivity(), FileAdapter.OnItemClickListener,
 
         if (fileList != null) {
             for (file in fileList) {
-                files.add(file)
+                if (file.canRead()) {
+                    files.add(file)
+                }
             }
         }
 
@@ -164,6 +187,35 @@ class MainActivity : AppCompatActivity(), FileAdapter.OnItemClickListener,
 
         return files
     }
+
+    private fun getFilesOnly(): ArrayList<File> {
+        val files = ArrayList<File>()
+        val directory = File(currentPath ?: Environment.getExternalStorageDirectory().absolutePath)
+
+        val fileList = directory.listFiles()
+
+        if (fileList != null) {
+            for (file in fileList) {
+                if (file.isFile && file.canRead()) {
+                    files.add(file)
+                }
+            }
+        }
+
+        // Sort files
+        when (sortBy) {
+            SortBy.SORT_BY_NAME -> files.sortBy { it.name }
+            SortBy.SORT_BY_SIZE -> files.sortBy { if (it.isFile) it.length() else 0 }
+            SortBy.SORT_BY_TIME_OF_CREATION -> files.sortBy { getFileTimeOfCreation(it) }
+            SortBy.SORT_BY_EXTENSION -> files.sortBy { if (it.isFile) it.extension else "" }
+        }
+        if (!sortAscending) {
+            files.reverse()
+        }
+
+        return files
+    }
+
 
     private fun getFileTimeOfCreation(file: File): Long {
         val attr = Files.readAttributes(
@@ -216,7 +268,7 @@ class MainActivity : AppCompatActivity(), FileAdapter.OnItemClickListener,
     override fun onDestroy() {
         // Update file hashes
         val db = FileHashDatabaseHelper(this)
-        for (file in getFiles()) {
+        for (file in getFilesOnly()) {
             db.insertFileHash(file)
         }
         super.onDestroy()
